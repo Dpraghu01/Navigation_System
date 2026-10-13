@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Indoor Building Navigator</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <!-- 3D Canvas Rendering Target -->
+     <!-- Add this above the canvas-container in index.html -->
+    <div id="profile-widget">
+      <div id="profile-icon">👤</div>
+      <div id="profile-dropdown" class="hidden">
+        <p>Logged in as <br><strong id="current-username">User</strong></p>
+        <button id="logout-btn">Logout</button>
+      </div>
+    </div>
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Panel -->
+    <aside id="ui-panel">
+      <h2>Indoor Navigator</h2>
+
+      <div class="input-group">
+        <label for="start-room">Starting Room:</label>
+        <select id="start-room">
+          <option value="">Select origin...</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="end-room">Destination Room:</label>
+        <select id="end-room">
+          <option value="">Select destination...</option>
+        </select>
+      </div>
+
+      <button id="find-path-btn">Calculate Route</button>
+
+      <div class="view-controls">
+        <label>View Mode:</label>
+        <div class="btn-group">
+          <button id="view-3d-btn" class="active">3D Exploded</button>
+          <button id="view-2d-btn">2D Top-Down</button>
+        </div>
+      </div>
+
+      <div id="route-info" class="hidden">
+        <h3>Route Summary</h3>
+        <p>Total Distance: <span id="distance-value">0</span> m</p>
+        <p>Segments: <span id="segment-count">0</span> nodes</p>
+      </div>
+    </aside>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
