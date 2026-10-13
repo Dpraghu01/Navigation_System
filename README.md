@@ -17,7 +17,7 @@ The application utilizes an exploded-axonometric 3D view to separate floors visu
 
 ## 📁 Project Structure
 
-
+```text
 indoor-navigation/
 ├── backend/
 │   ├── app.py                   # Flask API entry point (Port 5001)
@@ -37,7 +37,7 @@ indoor-navigation/
         ├── main.js              # Three.js application bootstrapper
         ├── landing.js           # Authentication logic
         └── style.css            # UI styling
-
+```
 Installation & Setup
 1. Backend Environment Setup
 Navigate to the backend directory, initialize a virtual environment, and install the necessary Python packages.
@@ -57,34 +57,39 @@ pip install Flask Flask-SQLAlchemy Flask-CORS werkzeug numpy ifcopenshell
 2. Extract the Building Graph
 Before running the API, you must parse the raw .ifc model to generate the building_graph.json file. This file contains the spatial nodes, room boundaries, and connectivity edges required by the frontend and the routing algorithm.
 
-Bash
+```Bash
 # Ensure you are still in the backend directory and the venv is active
 python extract_nodes_V2.py data/sample_building.ifc
+```
+
 Note: A successful extraction will generate building_graph.json in the backend directory.
 
 3. Frontend Setup
 Open a new terminal window, navigate to the frontend directory, and install the Node.js dependencies.
 
-`Bash
+```Bash
 cd frontend
 npm install
+```
 🏃‍♂️ Running the Application
 You must run both the backend API and the frontend development server simultaneously.
 
 
 Terminal 1: Start the Flask Backend
 
-Bash
+```Bash
 cd backend
 source venv/bin/activate
 python app.py
+```
 The API will boot on http://localhost:5001. The SQLite database (navigation.db) will be automatically created on the first run.
 
 Terminal 2: Start the Vite Frontend
 
-Bash
+```Bash
 cd frontend
 npm run dev
+```
 Vite will boot on http://localhost:3000.
 
 🧭 Usage Guidelines
