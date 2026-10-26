@@ -215,7 +215,7 @@ def process_ifc_graph(ifc_path):
     if stair_connections:
         json_output["stair_connections"] = stair_connections
 
-    with open("building_graph.json", "w") as f:
+    with open("building_graph_c.json", "w") as f:
         json.dump(json_output, f, indent=4)
         
     print(f"Successfully processed {ifc_path} with unit scale multiplier: {scale}")

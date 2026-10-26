@@ -14,7 +14,7 @@ async function verifySession() {
     
     // Proceed with booting the 3D application
     initScene();
-    fetchBuilding();
+    fetchBuildingList();
   } catch (err) {
     window.location.href = '/landing.html';
   }
@@ -105,15 +105,97 @@ function onWindowResize() {
 }
 
 // Data Fetching & Population
-async function fetchBuilding() {
+let currentBuildingId = null;
+
+// Replace fetchBuilding() with these new multi-building functions
+async function fetchBuildingList() {
   try {
-    const res = await fetch(`${CONFIG.apiBase}/building`);
+    const res = await fetch(`${CONFIG.apiBase}/buildings`);
+    const buildings = await res.json();
+    
+    const bSelect = document.getElementById('building-select');
+    bSelect.innerHTML = '<option value="">Choose a building...</option>';
+    
+    buildings.forEach(b => {
+      bSelect.add(new Option(b.name, b.id));
+    });
+    
+    // Add event listener to load building when selected
+    bSelect.addEventListener('change', (e) => {
+      if (e.target.value) {
+        currentBuildingId = e.target.value;
+        loadBuilding(currentBuildingId);
+      }
+    });
+  } catch (err) {
+    console.error('Failed to load buildings list:', err);
+  }
+}
+
+async function loadBuilding(buildingId) {
+  try {
+    // Clear existing 3D models and UI state
+    clearCurrentScene();
+    
+    const res = await fetch(`${CONFIG.apiBase}/building/${buildingId}`);
     buildingData = await res.json();
 
     renderBuilding(buildingData);
     populateRoomSelectors(buildingData);
   } catch (err) {
-    console.error('Failed to load building graph:', err);
+    console.error(`Failed to load data for ${buildingId}:`, err);
+  }
+}
+
+function clearCurrentScene() {
+  // Remove floor groups from the scene
+  Object.values(floorGroups).forEach(group => {
+    scene.remove(group);
+  });
+  
+  // Remove route path if it exists
+  if (currentPathLine) {
+    scene.remove(currentPathLine);
+    currentPathLine.geometry.dispose();
+    currentPathLine.material.dispose();
+    currentPathLine = null;
+  }
+  
+  // Wipe internal state and HTML labels
+  floorGroups = {};
+  roomMeshes = {};
+  document.getElementById('start-room').innerHTML = '<option value="">Select origin...</option>';
+  document.getElementById('end-room').innerHTML = '<option value="">Select destination...</option>';
+  document.getElementById('route-info').classList.add('hidden');
+  
+  // Clear CSS2D labels
+  while (labelRenderer.domElement.firstChild) {
+    labelRenderer.domElement.removeChild(labelRenderer.domElement.firstChild);
+  }
+}
+
+// Update the calculatePath function to include the buildingId
+async function calculatePath() {
+  const startRoom = document.getElementById('start-room').value;
+  const endRoom = document.getElementById('end-room').value;
+
+  if (!currentBuildingId || !startRoom || !endRoom) return;
+
+  try {
+    const res = await fetch(`${CONFIG.apiBase}/navigate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        building_id: currentBuildingId,
+        start: startRoom, 
+        end: endRoom 
+      })
+    });
+
+    const result = await res.json();
+    if (result.success) renderRoute(result);
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -273,34 +355,7 @@ function renderBuilding(data) {
   });
 }
 
-// Navigation Handling
-async function calculatePath() {
-  const startRoom = document.getElementById('start-room').value;
-  const endRoom = document.getElementById('end-room').value;
 
-  if (!startRoom || !endRoom) {
-    alert('Please select both a start and destination room.');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${CONFIG.apiBase}/navigate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start: startRoom, end: endRoom })
-    });
-
-    const result = await res.json();
-    if (!result.success) {
-      alert(result.message || 'Path generation failed');
-      return;
-    }
-
-    renderRoute(result);
-  } catch (err) {
-    console.error('Error during route computation:', err);
-  }
-}
 
 function renderRoute(routeData) {
   // Clear previous path line

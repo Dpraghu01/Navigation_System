@@ -8,7 +8,6 @@ from models import db, User  # Import the new DB and Model
 
 
 
-
 app = Flask(__name__)
 CORS(app)  # Allows Vite dev server requests
 
@@ -23,70 +22,76 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-GRAPH_FILE = os.path.join(os.path.dirname(__file__), "building_graph.json")
+BUILDINGS = {
+    "campus_main": "building_graph.json",
+    "science_block": "building_graph_b.json"
+}
 
-# In-memory graph cache to prevent repeated disk I/O on every query
-GRAPH_CACHE = None
+GRAPH_CACHE = {}
 
-def get_graph():
-    global GRAPH_CACHE
-    if GRAPH_CACHE is None:
-        if not os.path.exists(GRAPH_FILE):
-            raise FileNotFoundError(f"Missing {GRAPH_FILE}. Run extract_nodes_V2.py first.")
-        GRAPH_CACHE = load_graph(GRAPH_FILE)
-    return GRAPH_CACHE
+def get_graph(building_id):
+    if building_id not in BUILDINGS:
+        raise ValueError("Building not found")
+        
+    if building_id not in GRAPH_CACHE:
+        filepath = os.path.join(os.path.dirname(__file__), BUILDINGS[building_id])
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Missing {filepath}")
+        GRAPH_CACHE[building_id] = load_graph(filepath)
+    return GRAPH_CACHE[building_id]
 
-@app.route("/api/building", methods=["GET"])
-def get_building_data():
-    """Returns the full building layout and extracted graph for 3D rendering."""
+@app.route("/api/buildings", methods=["GET"])
+def list_buildings():
+    """Returns available buildings for the frontend dropdown."""
+    return jsonify([
+        {"id": "campus_main", "name": "Main Campus Building"},
+        {"id": "science_block", "name": "Science & Engineering Block"}
+    ]), 200
+
+@app.route("/api/building/<building_id>", methods=["GET"])
+def get_building_data(building_id):
     try:
-        data = get_graph()
-        return jsonify(data), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/rooms", methods=["GET"])
-def get_rooms():
-    """Extracts and returns a sorted list of unique room names across all floors."""
-    try:
-        data = get_graph()
-        rooms = set()
-        for floor_name, floor_data in data.items():
+        graph = get_graph(building_id)
+        client_payload = {}
+        
+        for floor_name, floor_data in graph.items():
             if floor_name == "stair_connections":
+                client_payload[floor_name] = floor_data
                 continue
-            for box in floor_data.get("shoeboxes", []):
-                name = box.get("name")
-                if name:
-                    rooms.add(name)
-        return jsonify(sorted(list(rooms))), 200
+                
+            client_payload[floor_name] = {
+                "elevation": floor_data.get("elevation", 0),
+                "shoeboxes": floor_data.get("shoeboxes", []),
+                # FIX: Send ONLY the stair nodes to the frontend
+                "nodes": [n for n in floor_data.get("nodes", []) if n.get("type") == "stair"]
+            }
+        return jsonify(client_payload), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/navigate", methods=["POST"])
 def navigate():
-    """
-    Accepts start and end room names, executes Dijkstra's algorithm,
-    and returns the computed path and total distance.
-    """
     body = request.get_json() or {}
+    building_id = body.get("building_id")
     start_room = body.get("start")
     end_room = body.get("end")
 
-    if not start_room or not end_room:
-        return jsonify({"error": "Both 'start' and 'end' rooms are required"}), 400
+    if not all([building_id, start_room, end_room]):
+        return jsonify({"error": "Building ID, start, and end rooms are required"}), 400
 
-    cost, path = find_shortest_path(start_room, end_room, json_path=GRAPH_FILE)
+    filepath = os.path.join(os.path.dirname(__file__), BUILDINGS.get(building_id, ""))
+    if not os.path.exists(filepath):
+         return jsonify({"error": "Invalid building"}), 404
+
+    cost, path = find_shortest_path(start_room, end_room, json_path=filepath)
 
     if path is None:
-        return jsonify({
-            "success": False,
-            "message": f"No valid path found between {start_room} and {end_room}"
-        }), 404
+        return jsonify({"success": False, "message": "No valid path found"}), 404
 
     return jsonify({
         "success": True,
-        "start": start_room,
-        "end": end_room,
+        "start": start_room, # FIX: Added back to enable green source color
+        "end": end_room,     # FIX: Added back to enable red destination color
         "total_distance": round(cost, 2),
         "path": [{"floor": floor, "pos": list(pos)} for floor, pos in path]
     }), 200
