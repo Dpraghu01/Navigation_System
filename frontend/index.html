@@ -46,12 +46,17 @@
 
       <button id="find-path-btn">Calculate Route</button>
 
+      <!-- Replace your existing .view-controls div with this -->
       <div class="view-controls">
         <label>View Mode:</label>
         <div class="btn-group">
           <button id="view-3d-btn" class="active">3D Exploded</button>
           <button id="view-2d-btn">2D Top-Down</button>
         </div>
+        <!-- Add the floor isolation dropdown -->
+        <select id="floor-select" class="hidden" style="margin-top: 12px;">
+          <!-- Options populated by JavaScript -->
+        </select>
       </div>
 
       <div id="route-info" class="hidden">

@@ -142,6 +142,7 @@ async function loadBuilding(buildingId) {
 
     renderBuilding(buildingData);
     populateRoomSelectors(buildingData);
+    populateFloorSelector(buildingData);
   } catch (err) {
     console.error(`Failed to load data for ${buildingId}:`, err);
   }
@@ -217,6 +218,8 @@ function populateRoomSelectors(data) {
     endSelect.add(new Option(room, room));
   });
 }
+
+
 
 // 3D Geometry Rendering
 // 3D Geometry Rendering with Structural Approximations
@@ -418,28 +421,75 @@ function resetRoomHighlights() {
     mesh.material.opacity = CONFIG.baseOpacity;
   });
 }
+// Populates the 2D view floor dropdown
+function populateFloorSelector(data) {
+  const floorSelect = document.getElementById('floor-select');
+  floorSelect.innerHTML = ''; // Clear previous options
+  
+  // Filter out stair_connections and sort by elevation
+  const floors = Object.keys(data)
+    .filter(k => k !== 'stair_connections')
+    .sort((a, b) => data[a].elevation - data[b].elevation);
 
+  floors.forEach(floorName => {
+    floorSelect.add(new Option(floorName, floorName));
+  });
+
+  // Listen for dropdown changes to swap the visible floor
+  floorSelect.addEventListener('change', (e) => {
+    const activeFloor = e.target.value;
+    
+    // Only apply isolation if currently in 2D mode
+    if (document.getElementById('view-2d-btn').classList.contains('active')) {
+      Object.entries(floorGroups).forEach(([name, group]) => {
+        // Three.js will automatically hide all room meshes, stair shafts, and CSS2D labels inside this group
+        group.visible = (name === activeFloor); 
+      });
+    }
+  });
+}
 // UI Controls
 function setupUIEvents() {
   document.getElementById('find-path-btn').addEventListener('click', calculatePath);
 
   const btn3D = document.getElementById('view-3d-btn');
   const btn2D = document.getElementById('view-2d-btn');
+  const floorSelect = document.getElementById('floor-select');
 
+  // 3D Exploded View Toggle
   btn3D.addEventListener('click', () => {
     btn3D.classList.add('active');
     btn2D.classList.remove('active');
+    floorSelect.classList.add('hidden'); // Hide the dropdown
+
+    // Restore visibility to all floors
+    Object.values(floorGroups).forEach(group => {
+      group.visible = true;
+    });
+
+    // Reset camera to angled perspective
     camera.position.set(40, 50, 60);
     controls.target.set(0, 0, 0);
   });
 
+  // 2D Top-Down View Toggle
   btn2D.addEventListener('click', () => {
     btn2D.classList.add('active');
     btn3D.classList.remove('active');
-    camera.position.set(0, 100, 0); // Orthographic top-down vantage
+    floorSelect.classList.remove('hidden'); // Show the dropdown
+
+    // Isolate the currently selected floor in the dropdown
+    const activeFloor = floorSelect.value;
+    Object.entries(floorGroups).forEach(([name, group]) => {
+      group.visible = (name === activeFloor);
+    });
+
+    // Move camera to a direct top-down orthographic vantage point
+    camera.position.set(0, 150, 0); 
     controls.target.set(0, 0, 0);
   });
 
+  // Profile Widget Logic
   const profileIcon = document.getElementById('profile-icon');
   const profileDropdown = document.getElementById('profile-dropdown');
   const logoutBtn = document.getElementById('logout-btn');
